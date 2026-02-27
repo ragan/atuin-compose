@@ -3,13 +3,14 @@
 ## Setup
 
 ```bash
-# 1. Copy .env.example to .env and update password
+# 1. Copy .env.example to .env and update configuration
 cp .env.example .env
-nano .env  # Change ATUIN_DB_PASSWORD
+nano .env
+# Update ATUIN_DB_PASSWORD with a secure password
+# Update UID and GID with your current user ID: id -u and id -g
 
 # 2. Create config directory
 mkdir config
-chown 1000:1000 config
 
 # 3. Start services
 docker compose up -d
