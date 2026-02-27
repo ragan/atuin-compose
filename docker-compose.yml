@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   atuin:
     restart: always
@@ -7,6 +8,8 @@ services:
       - "./config:/config"
     ports:
       - 8888:8888
+    env_file:
+      - .env
     environment:
       ATUIN_HOST: "0.0.0.0"
       ATUIN_OPEN_REGISTRATION: "true"
@@ -19,6 +22,8 @@ services:
     restart: unless-stopped
     volumes:
       - "./database:/var/lib/postgresql/data/"
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: ${ATUIN_DB_USERNAME}
       POSTGRES_PASSWORD: ${ATUIN_DB_PASSWORD}
