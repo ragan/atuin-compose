@@ -1,0 +1,14 @@
+# Environment files
+.env
+.env.*
+
+# Local configuration
+config/
+database/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
