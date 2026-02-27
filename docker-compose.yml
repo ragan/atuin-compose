@@ -3,6 +3,7 @@ services:
     restart: always
     image: ghcr.io/atuinsh/atuin:18.3.0
     command: server start
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - "./config:/config"
     ports:
