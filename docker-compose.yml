@@ -2,7 +2,7 @@ services:
   atuin:
     restart: always
     image: ghcr.io/atuinsh/atuin:18.3.0
-    command: server
+    command: server start
     volumes:
       - "./config:/config"
     ports:
