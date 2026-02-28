@@ -1,147 +1,62 @@
 # Atuin Self-Hosted Sync Server
 
-Self-hosted Atuin sync server using Docker Compose with PostgreSQL.
+Share your shell history across multiple machines using Atuin.
 
-## Quick Start
+## Server Setup (one time)
 
 ```bash
-# Copy and configure environment file
 cp .env.example .env
-# IMPORTANT: Set POSTGRES_PASSWORD to a strong password in .env
-
-# Start the server
+# Set POSTGRES_PASSWORD to something secure in .env
 docker compose up -d
-
-# Check status
-docker compose ps
-
-# View logs
-docker compose logs -f
 ```
 
-## Configuration
+Done. Server is now running.
 
-- **Server URL**: http://localhost:8888
-- **Database**: PostgreSQL 16 (managed by Docker)
-- **Registration**: Closed by default (must be explicitly enabled)
-- **Config**: Environment variables in `.env` file
-
-## Environment Variables
-
-Key variables in `.env`:
-
-- `POSTGRES_PASSWORD` (required): Strong database password (must be set)
-- `POSTGRES_DB`: Database name (default: atuin)
-- `POSTGRES_USER`: Database user (default: atuin)
-- `ATUIN_OPEN_REGISTRATION`: Enable open registration (default: false)
-- `UID/GID`: Container user permissions (default: 1000:1000)
-
-## Client Setup
-
-### Install Atuin Client
+## Client Setup (on each machine)
 
 ```bash
-# Linux/macOS
+# Install Atuin
 curl --proto='https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
 
-# Or visit https://github.com/atuinsh/atuin for other installation methods
-```
+# Point to your server
+echo 'sync_address = "http://YOUR_SERVER_IP:8888"' >> ~/.config/atuin/config.toml
 
-### Configure Server Address
-
-Add your server address to `~/.config/atuin/config.toml` (create the file if it doesn't exist):
-
-```toml
-sync_address = "http://your-server-ip:8888"
-```
-
-OR set it via environment variable:
-
-```bash
-export ATUIN_SYNC_ADDRESS=http://your-server-ip:8888
-```
-
-Replace `your-server-ip` with your actual server IP or domain name (e.g., `http://192.168.1.100:8888` or `http://myserver.local:8888`).
-
-### Register with Server
-
-```bash
-# Register with your username and email
+# Register (use SAME username/email on ALL machines)
 atuin register -u YOUR_USERNAME -e YOUR_EMAIL
-```
 
-### Import and Sync Existing History
-
-```bash
-# Import existing shell history
+# Import your existing history
 atuin import auto
 
-# Sync to server
+# Sync
 atuin sync
 ```
 
-### Configure Shell Integration
-
-Add to your shell configuration file (`~/.bashrc`, `~/.zshrc`, or `~/.config/fish/config.fish`):
-
+Add to your `~/.zshrc`:
 ```bash
-# For Bash
-eval "$(atuin init bash)"
-
-# For Zsh
 eval "$(atuin init zsh)"
-
-# For Fish
-atuin init fish | source
 ```
 
-### Multi-Machine Setup
+That's it. Your history is now synced.
 
-To sync history across multiple machines:
+## Important Notes
 
-1. Install Atuin on each machine using the steps above
-2. Configure the same `sync_address` on each machine (via config file or environment variable)
-3. Register with the same username and email on each machine
-4. Import existing history from each machine
-5. Atuin will automatically merge and sync history
+- **Use the SAME username and email on ALL your machines** - this is how they share history
+- Replace `YOUR_SERVER_IP` with your server's actual IP (e.g., `192.168.1.100`)
+- Open registration is disabled by default for security
+- Your history is end-to-end encrypted
 
-### Automatic Syncing
-
-Atuin automatically syncs when you run commands. To manually sync:
+## Management
 
 ```bash
-atuin sync
-```
-
-## Services
-
-- **PostgreSQL**: Stores encrypted shell history with health checks
-- **Atuin Server**: Handles sync requests and authentication with health checks
-
-## Persistence
-
-Database is stored in a Docker volume: postgres_data
-
-## Logs
-
-```bash
-# View all logs
+# View logs
 docker compose logs -f
 
-# View specific service logs
-docker compose logs -f atuin
-docker compose logs -f postgres
-```
-
-## Stop
-
-```bash
+# Stop server
 docker compose down
-```
 
-## Update
-
-```bash
-docker compose pull
+# Start server
 docker compose up -d
+
+# Update server
+docker compose pull && docker compose up -d
 ```
