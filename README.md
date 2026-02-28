@@ -53,7 +53,7 @@ atuin sync
 
 ## Persistence
 
-Database is stored in a Docker volume: atuin-compose_postgres_data
+Database is stored in a Docker volume: postgres_data
 
 ## Logs
 
