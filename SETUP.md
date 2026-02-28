@@ -1,60 +1,37 @@
-# Atuin Server - Docker Compose Setup
+# Atuin Server Setup Guide
 
-This directory contains the setup for self-hosting Atuin sync server using Docker Compose with SQLite database.
+This guide covers setting up a self-hosted Atuin sync server using Docker Compose with PostgreSQL.
 
-## Quick Start
+## Prerequisites
 
-1. Create `.env` file with user/group IDs
-2. Run `docker compose up -d`
-3. Configure clients to sync with your server
+- Docker and Docker Compose installed
+- Git installed (optional, for cloning this repository)
+- Network access to host the server
 
-## Files
+## Quick Setup
 
-### `.env` - Environment Variables
-
-```bash
-# User/Group ID for container permissions
-UID=1000
-GID=1000
-```
-
-### `docker-compose.yml` - Service Definitions
-
-```yaml
-services:
-  atuin:
-    restart: always
-    image: ghcr.io/atuinsh/atuin:18.3.0
-    command: server start
-    user: "${UID:-1000}:${GID:-1000}"
-    volumes:
-      - "./config:/config"
-    ports:
-      - 8888:8888
-    env_file:
-      - .env
-    environment:
-      ATUIN_HOST: "0.0.0.0"
-      ATUIN_OPEN_REGISTRATION: "true"
-      ATUIN_DB_URI: sqlite:///config/atuin.db
-      RUST_LOG: info,atuin_server=debug
-```
-
-## Setup Instructions
-
-### 1. Prepare Directories
+### 1. Clone or Download Repository
 
 ```bash
-mkdir config
+# If using git
+git clone git@nas.hjkl.am:kpeek/atuin-compose.git
+cd atuin-compose
+
+# Or download and extract manually
 ```
 
 ### 2. Configure Environment
 
 ```bash
-# Copy example file and update UID/GID
+# Copy example environment file
 cp .env.example .env
+
+# Check current user ID (if needed)
+id -u
+id -g
+
+# Edit .env if your UID/GID is not 1000:1000
 nano .env
-# Set UID and GID to your user IDs: id -u and id -g
 ```
 
 ### 3. Start Services
@@ -63,149 +40,265 @@ nano .env
 docker compose up -d
 ```
 
-### 4. Configure Clients
+This starts:
+- PostgreSQL 16 database server
+- Atuin sync server
 
-On each client machine, update `~/.config/atuin/config.toml`:
+### 4. Verify Services
+
+```bash
+# Check service status
+docker compose ps
+
+# Check logs
+docker compose logs -f
+
+# Test server (should return JSON response)
+curl http://localhost:8888
+```
+
+## Configuration
+
+### Environment Variables (.env)
+
+```bash
+# User/Group ID for container permissions
+UID=1000
+GID=1000
+```
+
+### Docker Compose Configuration
+
+The docker-compose.yml file configures:
+
+- **PostgreSQL Service**:
+  - Image: postgres:16-alpine
+  - Database: atuin
+  - User: atuin
+  - Password: atuin_password
+  - Health check enabled
+  
+- **Atuin Service**:
+  - Image: ghcr.io/atuinsh/atuin:18.3.0
+  - Host: 0.0.0.0
+  - Port: 8888
+  - Open registration: enabled
+  - Depends on PostgreSQL
+
+### Server Configuration (config/server.toml)
 
 ```toml
-sync_address = "https://your-server.com:8888"
+host = "0.0.0.0"
+port = 8888
+open_registration = true
 ```
 
-### 5. Register/Login
+Database connection is set via environment variable ATUIN_DB_URI.
 
-**First machine:**
+## Client Setup
+
+### Install Atuin Client
+
 ```bash
-atuin register -u <USERNAME> -e <EMAIL>
-atuin key  # Save this key!
+# Linux/macOS
+curl --proto='https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+
+# Or manually install
+# Check https://github.com/atuinsh/atuin for other methods
+```
+
+### Register with Server
+
+```bash
+# Replace with your actual server URL, username, and email
+atuin register -u YOUR_USERNAME -e YOUR_EMAIL -s http://services.lan:8888
+```
+
+### Import Existing History
+
+```bash
+# Import from shell history
+atuin import auto
+
+# Sync to server
 atuin sync
 ```
 
-**Additional machines:**
-```bash
-atuin login -u <USERNAME>
-# Enter password + key from first machine
-atuin sync
-```
+### Configure Shell
 
-## What Happens If Sync Server Is Down?
-
-### Local Operations Continue Normally
-
-- ✅ Commands are still recorded to local SQLite database
-- ✅ History search works with local data
-- ✅ No interruption to shell functionality
-
-### Sync Behavior
-
-- Auto-sync fails silently (based on 30s network timeout)
-- When server is back online, sync resumes automatically
-- Run `atuin sync` manually to trigger sync when server is up
-- All local data is preserved and will sync when connection restores
-
-### Important Notes
-
-- Atuin is designed to be fault-tolerant
-- The sync server is only for backup and cross-machine sync
-- Each machine works independently with its local database
-- **Never lose your encryption key** (`atuin key`) - you can't recover synced history without it
-
-## Optional: Systemd Service
-
-Create `/etc/systemd/system/atuin.service`:
-
-```ini
-[Unit]
-Description=Docker Compose Atuin Service
-Requires=docker.service
-After=docker.service
-
-[Service]
-# Where the docker-compose file is located
-WorkingDirectory=/path/to/atuin-compose
-ExecStart=/usr/bin/docker compose up
-ExecStop=/usr/bin/docker compose down
-TimeoutStartSec=0
-Restart=on-failure
-StartLimitBurst=3
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Start and enable:
-```bash
-systemctl enable --now atuin
-systemctl status atuin
-```
-
-## Configuration Reference
-
-### Server Config Options
-
-- `ATUIN_HOST`: The host to listen on (default: 127.0.0.1)
-- `ATUIN_PORT`: TCP port to listen on (default: 8888)
-- `ATUIN_OPEN_REGISTRATION`: Accept new user registrations (default: false)
-- `ATUIN_DB_URI`: SQLite path or PostgreSQL URI
-
-### Client Config Options
-
-- `sync_address`: Server URL (default: https://api.atuin.sh)
-- `sync_frequency`: How often to auto-sync (default: 1h)
-- `auto_sync`: Enable/disable auto-sync (default: true)
-- `db_path`: Local database path (default: ~/.local/share/atuin/history.db)
-
-### Useful Commands
+Add the following to your shell configuration (e.g., ~/.bashrc, ~/.zshrc):
 
 ```bash
-# View your encryption key
-atuin key
+# For Bash
+eval "$(atuin init bash)"
 
-# Manual sync
-atuin sync
+# For Zsh
+eval "$(atuin init zsh)"
 
-# Force full sync
-atuin sync -f
-
-# Delete your account (deletes server data, local data remains)
-atuin account delete
-
-# Logout
-atuin logout
-
-# Check client info
-atuin info
+# For Fish
+atuin init fish | source
 ```
 
-## Important Security Notes
+## Maintenance
 
-- All history is end-to-end encrypted
-- Server operators cannot see your data
-- Never share your encryption key
-- Use reverse proxy (nginx/caddy) for HTTPS in production
-- Backup the SQLite database regularly: `/config/atuin.db`
-- Store encryption key in password manager
+### View Logs
+
+```bash
+docker compose logs -f
+```
+
+### Stop Services
+
+```bash
+docker compose down
+```
+
+### Restart Services
+
+```bash
+docker compose restart
+```
+
+### Update Atuin
+
+```bash
+# Pull latest images
+docker compose pull
+
+# Restart services
+docker compose up -d
+```
+
+### Backup Database
+
+```bash
+# Backup PostgreSQL database
+docker exec atuin-compose-postgres-1 pg_dump -U atuin atuin > backup.sql
+
+# Restore from backup
+docker exec -i atuin-compose-postgres-1 psql -U atuin atuin < backup.sql
+```
+
+### Clean Up
+
+```bash
+# Stop and remove containers
+docker compose down
+
+# Remove volumes (WARNING: deletes all data)
+docker compose down -v
+```
+
+## Security Considerations
+
+- **Open Registration**: Currently enabled. Disable by setting ATUIN_OPEN_REGISTRATION=false in docker-compose.yml
+- **Database Password**: Change the default password in docker-compose.yml
+- **TLS/SSL**: Consider adding reverse proxy with TLS (nginx, traefik, etc.)
+- **Firewall**: Ensure port 8888 is accessible only from trusted networks
 
 ## Troubleshooting
 
-### Sync Fails
-- Check server is running: `docker compose ps`
-- Check server logs: `docker compose logs atuin`
-- Verify sync_address in client config
-- Check network connectivity
+### Container Won't Start
 
-### Database Issues
-- Check database file exists: `ls -la config/atuin.db`
-- Check file permissions on config directory
-- Verify server logs for database errors
+```bash
+# Check logs
+docker compose logs
 
-### Permissions Issues
-- Ensure config directory has proper ownership
-- Check UID/GID in .env match your user IDs
+# Check permissions
+ls -la config/
 
-## Resources
+# Verify .env file exists
+cat .env
+```
 
-- [Atuin Documentation](https://docs.atuin.sh)
-- [GitHub Repository](https://github.com/atuinsh/atuin)
-- [Releases](https://github.com/atuinsh/atuin/releases)
-- [Community Forum](https://forum.atuin.sh)
-- [Discord](https://discord.gg/jR3tfchVvW)
+### Database Connection Issues
+
+```bash
+# Check PostgreSQL is running
+docker compose ps postgres
+
+# Check PostgreSQL logs
+docker compose logs postgres
+
+# Test database connection
+docker exec -it atuin-compose-postgres-1 psql -U atuin -d atuin
+```
+
+### Permission Errors
+
+If you get permission errors, ensure:
+1. UID/GID in .env matches your user
+2. config/ directory is owned by your user
+3. Docker has proper permissions
+
+```bash
+# Fix permissions if needed
+sudo chown -R ${UID}:${GID} config/
+chmod 755 config/
+```
+
+### Server Not Responding
+
+```bash
+# Check server is running
+docker compose ps
+
+# Test connectivity
+curl -v http://localhost:8888
+
+# Check firewall rules
+sudo ufw status
+```
+
+## Advanced Configuration
+
+### Disable Open Registration
+
+Edit docker-compose.yml:
+
+```yaml
+environment:
+  ATUIN_OPEN_REGISTRATION: "false"
+```
+
+### Use External PostgreSQL
+
+Edit docker-compose.yml to remove PostgreSQL service and update:
+
+```yaml
+environment:
+  ATUIN_DB_URI: postgres://user:password@external-host:5432/atuin
+```
+
+### Add TLS/SSL
+
+Add a reverse proxy (nginx, traefik) with SSL certificates.
+
+## Network Access
+
+To access the server from other machines:
+
+1. **Local Network**: Use the server's local IP (e.g., http://192.168.1.100:8888)
+2. **DNS**: Add DNS entry for your domain
+3. **Public Access**: Use a reverse proxy with TLS and proper security measures
+
+## Systemd Service (Optional)
+
+For automatic startup, use the provided atuin.service file:
+
+```bash
+# Copy service file
+sudo cp atuin.service /etc/systemd/system/
+
+# Enable and start
+sudo systemctl enable atuin
+sudo systemctl start atuin
+```
+
+Note: The systemd service assumes docker compose is already running. You may need to adjust the ExecStart path.
+
+## Support
+
+- Atuin Documentation: https://docs.atuin.sh
+- Atuin GitHub: https://github.com/atuinsh/atuin
+- Atuin Forum: https://forum.atuin.sh

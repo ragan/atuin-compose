@@ -1,58 +1,64 @@
-# Atuin Server - Quick Reference
+# Atuin Self-Hosted Sync Server
 
-## Setup
+Self-hosted Atuin sync server using Docker Compose with PostgreSQL.
+
+## Quick Start
 
 ```bash
-# 1. Copy .env.example to .env and update configuration
+# Configure user ID and group ID
 cp .env.example .env
-nano .env
-# Update UID and GID with your current user ID: id -u and id -g
+# Edit .env if needed (defaults to UID=1000, GID=1000)
 
-# 2. Create config directory
-mkdir config
-
-# 3. Start services
+# Start the server
 docker compose up -d
 
-# 4. Check status
+# Check status
 docker compose ps
 
-# 5. View logs
-docker compose logs -f atuin
+# View logs
+docker compose logs -f
 ```
+
+## Configuration
+
+- **Server URL**: http://services.lan:8888
+- **Database**: PostgreSQL 16 (managed by Docker)
+- **Registration**: Open (anyone can register)
 
 ## Client Setup
 
 ```bash
-# On each client machine, add to ~/.config/atuin/config.toml:
-sync_address = "http://your-server:8888"
+# Register with your server
+atuin register -u YOUR_USERNAME -e YOUR_EMAIL -s http://services.lan:8888
 
-# Register on first machine
-atuin register -u username -e email@example.com
-
-# Save your key!
-atuin key
-
-# Sync
+# Sync history
 atuin sync
 ```
 
-## Useful Commands
+## Services
+
+- **PostgreSQL**: Stores encrypted shell history
+- **Atuin Server**: Handles sync requests and authentication
+
+## Persistence
+
+Database is stored in a Docker volume: atuin-compose_postgres_data
+
+## Logs
 
 ```bash
-# Stop services
-docker compose down
-
-# Start services
-docker compose up -d
-
-# View logs
 docker compose logs -f
-
-# Restart services
-docker compose restart
 ```
 
-## Documentation
+## Stop
 
-See [SETUP.md](SETUP.md) for complete documentation.
+```bash
+docker compose down
+```
+
+## Update
+
+```bash
+docker compose pull
+docker compose up -d
+```
