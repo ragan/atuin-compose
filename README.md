@@ -6,7 +6,6 @@
 # 1. Copy .env.example to .env and update configuration
 cp .env.example .env
 nano .env
-# Update ATUIN_DB_PASSWORD with a secure password
 # Update UID and GID with your current user ID: id -u and id -g
 
 # 2. Create config directory

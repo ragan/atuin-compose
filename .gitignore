@@ -4,7 +4,6 @@
 
 # Local configuration
 config/
-database/
 
 # Logs
 *.log

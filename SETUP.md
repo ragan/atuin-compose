@@ -1,23 +1,21 @@
 # Atuin Server - Docker Compose Setup
 
-This directory contains the setup for self-hosting Atuin sync server using Docker Compose.
+This directory contains the setup for self-hosting Atuin sync server using Docker Compose with SQLite database.
 
 ## Quick Start
 
-1. Create `.env` file with database credentials
-2. Create `docker-compose.yml` with service definitions
-3. Run `docker compose up -d`
-4. Configure clients to sync with your server
+1. Create `.env` file with user/group IDs
+2. Run `docker compose up -d`
+3. Configure clients to sync with your server
 
 ## Files
 
 ### `.env` - Environment Variables
 
 ```bash
-ATUIN_DB_NAME=atuin
-ATUIN_DB_USERNAME=atuin
-# Choose your own secure password. Stick to [A-Za-z0-9.~_-]
-ATUIN_DB_PASSWORD=really-insecure
+# User/Group ID for container permissions
+UID=1000
+GID=1000
 ```
 
 ### `docker-compose.yml` - Service Definitions
@@ -26,28 +24,20 @@ ATUIN_DB_PASSWORD=really-insecure
 services:
   atuin:
     restart: always
-    image: ghcr.io/atuinsh/atuin:<LATEST TAGGED RELEASE>
-    command: start
+    image: ghcr.io/atuinsh/atuin:18.3.0
+    command: server start
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - "./config:/config"
     ports:
       - 8888:8888
+    env_file:
+      - .env
     environment:
       ATUIN_HOST: "0.0.0.0"
       ATUIN_OPEN_REGISTRATION: "true"
-      ATUIN_DB_URI: postgres://${ATUIN_DB_USERNAME}:${ATUIN_DB_PASSWORD}@db/${ATUIN_DB_NAME}
+      ATUIN_DB_URI: sqlite:///config/atuin.db
       RUST_LOG: info,atuin_server=debug
-    depends_on:
-      - db
-  db:
-    image: postgres:18
-    restart: unless-stopped
-    volumes:
-      - "./database:/var/lib/postgresql/data/"
-    environment:
-      POSTGRES_USER: ${ATUIN_DB_USERNAME}
-      POSTGRES_PASSWORD: ${ATUIN_DB_PASSWORD}
-      POSTGRES_DB: ${ATUIN_DB_NAME}
 ```
 
 ## Setup Instructions
@@ -56,16 +46,24 @@ services:
 
 ```bash
 mkdir config
-chown 1000:1000 config
 ```
 
-### 2. Start Services
+### 2. Configure Environment
+
+```bash
+# Copy example file and update UID/GID
+cp .env.example .env
+nano .env
+# Set UID and GID to your user IDs: id -u and id -g
+```
+
+### 3. Start Services
 
 ```bash
 docker compose up -d
 ```
 
-### 3. Configure Clients
+### 4. Configure Clients
 
 On each client machine, update `~/.config/atuin/config.toml`:
 
@@ -73,7 +71,7 @@ On each client machine, update `~/.config/atuin/config.toml`:
 sync_address = "https://your-server.com:8888"
 ```
 
-### 4. Register/Login
+### 5. Register/Login
 
 **First machine:**
 ```bash
@@ -140,29 +138,6 @@ systemctl enable --now atuin
 systemctl status atuin
 ```
 
-## Optional: Database Backups
-
-Add to `docker-compose.yml`:
-
-```yaml
-backup:
-  container_name: atuin_db_dumper
-  image: prodrigestivill/postgres-backup-local
-  env_file:
-    - .env
-  environment:
-    POSTGRES_HOST: postgresql
-    POSTGRES_DB: ${ATUIN_DB_NAME}
-    POSTGRES_USER: ${ATUIN_DB_USERNAME}
-    POSTGRES_PASSWORD: ${ATUIN_DB_PASSWORD}
-    SCHEDULE: "@daily"
-    BACKUP_DIR: /db_dumps
-  volumes:
-    - ./db_dumps:/db_dumps
-  depends_on:
-    - postgresql
-```
-
 ## Configuration Reference
 
 ### Server Config Options
@@ -170,7 +145,7 @@ backup:
 - `ATUIN_HOST`: The host to listen on (default: 127.0.0.1)
 - `ATUIN_PORT`: TCP port to listen on (default: 8888)
 - `ATUIN_OPEN_REGISTRATION`: Accept new user registrations (default: false)
-- `ATUIN_DB_URI`: PostgreSQL URI or SQLite path
+- `ATUIN_DB_URI`: SQLite path or PostgreSQL URI
 
 ### Client Config Options
 
@@ -206,9 +181,8 @@ atuin info
 - All history is end-to-end encrypted
 - Server operators cannot see your data
 - Never share your encryption key
-- Use strong passwords for database
 - Use reverse proxy (nginx/caddy) for HTTPS in production
-- Backup your database regularly
+- Backup the SQLite database regularly: `/config/atuin.db`
 - Store encryption key in password manager
 
 ## Troubleshooting
@@ -220,13 +194,13 @@ atuin info
 - Check network connectivity
 
 ### Database Issues
-- Check database is running: `docker compose ps db`
-- Check database logs: `docker compose logs db`
-- Verify database credentials in .env
+- Check database file exists: `ls -la config/atuin.db`
+- Check file permissions on config directory
+- Verify server logs for database errors
 
 ### Permissions Issues
-- Ensure config directory is owned by UID 1000
-- Check database volume permissions
+- Ensure config directory has proper ownership
+- Check UID/GID in .env match your user IDs
 
 ## Resources
 
