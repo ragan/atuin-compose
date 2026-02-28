@@ -3,16 +3,24 @@ services:
     restart: always
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: atuin
-      POSTGRES_USER: atuin
-      POSTGRES_PASSWORD: atuin_password
+      POSTGRES_DB: ${POSTGRES_DB:-atuin}
+      POSTGRES_USER: ${POSTGRES_USER:-atuin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U atuin']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-atuin}']
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
 
   atuin:
     restart: always
@@ -25,11 +33,25 @@ services:
       - 8888:8888
     environment:
       ATUIN_HOST: "0.0.0.0"
-      ATUIN_OPEN_REGISTRATION: "true"
-      ATUIN_DB_URI: postgres://atuin:atuin_password@postgres/atuin
+      ATUIN_OPEN_REGISTRATION: "${ATUIN_OPEN_REGISTRATION:-false}"
+      ATUIN_DB_URI: postgres://${POSTGRES_USER:-atuin}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB:-atuin}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:8888/ || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
 
 volumes:
   postgres_data:

@@ -65,6 +65,14 @@ curl http://localhost:8888
 # User/Group ID for container permissions
 UID=1000
 GID=1000
+
+# PostgreSQL Configuration
+POSTGRES_DB=atuin
+POSTGRES_USER=atuin
+POSTGRES_PASSWORD=CHANGE_THIS_STRONG_PASSWORD
+
+# Atuin Server Configuration
+ATUIN_OPEN_REGISTRATION=false
 ```
 
 ### Docker Compose Configuration
@@ -75,25 +83,28 @@ The docker-compose.yml file configures:
   - Image: postgres:16-alpine
   - Database: atuin
   - User: atuin
-  - Password: atuin_password
+  - Password: Set via POSTGRES_PASSWORD environment variable
   - Health check enabled
+  - Resource limits: 512MB memory, 1 CPU
   
 - **Atuin Service**:
   - Image: ghcr.io/atuinsh/atuin:18.3.0
   - Host: 0.0.0.0
   - Port: 8888
-  - Open registration: enabled
-  - Depends on PostgreSQL
+  - Open registration: disabled by default (set via ATUIN_OPEN_REGISTRATION)
+  - Health check enabled
+  - Resource limits: 512MB memory, 1 CPU
+  - Depends on PostgreSQL (waits for healthy status)
 
 ### Server Configuration (config/server.toml)
 
 ```toml
 host = "0.0.0.0"
 port = 8888
-open_registration = true
+open_registration = false
 ```
 
-Database connection is set via environment variable ATUIN_DB_URI.
+Database connection is set via environment variable ATUIN_DB_URI, which uses credentials from .env file.
 
 ## Client Setup
 
@@ -111,7 +122,8 @@ curl --proto='https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
 
 ```bash
 # Replace with your actual server URL, username, and email
-atuin register -u YOUR_USERNAME -e YOUR_EMAIL -s http://services.lan:8888
+# Use localhost:8888 for local access or your server's IP/domain for remote access
+atuin register -u YOUR_USERNAME -e YOUR_EMAIL -s http://localhost:8888
 ```
 
 ### Import Existing History
@@ -191,10 +203,12 @@ docker compose down -v
 
 ## Security Considerations
 
-- **Open Registration**: Currently enabled. Disable by setting ATUIN_OPEN_REGISTRATION=false in docker-compose.yml
-- **Database Password**: Change the default password in docker-compose.yml
-- **TLS/SSL**: Consider adding reverse proxy with TLS (nginx, traefik, etc.)
+- **Database Password**: REQUIRED - Set POSTGRES_PASSWORD to a strong password in .env before starting services
+- **Open Registration**: Disabled by default. Enable only by setting ATUIN_OPEN_REGISTRATION=true in .env
+- **TLS/SSL**: Consider adding reverse proxy with TLS (nginx, traefik, etc.) for external access
 - **Firewall**: Ensure port 8888 is accessible only from trusted networks
+- **Resource Limits**: Containers are configured with memory and CPU limits to prevent resource exhaustion
+- **Health Checks**: Both services have health checks for better monitoring and reliability
 
 ## Troubleshooting
 
