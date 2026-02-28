@@ -22,6 +22,7 @@ curl --proto='https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
 echo 'sync_address = "http://YOUR_SERVER_IP:8888"' >> ~/.config/atuin/config.toml
 
 # Register (use SAME username/email on ALL machines)
+# You'll be asked to create an account password - use this SAME password on all machines
 atuin register -u YOUR_USERNAME -e YOUR_EMAIL
 
 # Import your existing history
