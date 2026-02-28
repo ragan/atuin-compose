@@ -47,12 +47,27 @@ curl --proto='https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
 # Or visit https://github.com/atuinsh/atuin for other installation methods
 ```
 
+### Configure Server Address
+
+Add your server address to `~/.config/atuin/config.toml` (create the file if it doesn't exist):
+
+```toml
+sync_address = "http://your-server-ip:8888"
+```
+
+OR set it via environment variable:
+
+```bash
+export ATUIN_SYNC_ADDRESS=http://your-server-ip:8888
+```
+
+Replace `your-server-ip` with your actual server IP or domain name (e.g., `http://192.168.1.100:8888` or `http://myserver.local:8888`).
+
 ### Register with Server
 
 ```bash
-# Replace with your actual server URL, username, and email
-# Use your server's IP or domain if accessing from another machine
-atuin register -u YOUR_USERNAME -e YOUR_EMAIL -s http://localhost:8888
+# Register with your username and email
+atuin register -u YOUR_USERNAME -e YOUR_EMAIL
 ```
 
 ### Import and Sync Existing History
@@ -85,9 +100,10 @@ atuin init fish | source
 To sync history across multiple machines:
 
 1. Install Atuin on each machine using the steps above
-2. Register with the same credentials on each machine
-3. Import existing history from each machine
-4. Atuin will automatically merge and sync history
+2. Configure the same `sync_address` on each machine (via config file or environment variable)
+3. Register with the same username and email on each machine
+4. Import existing history from each machine
+5. Atuin will automatically merge and sync history
 
 ### Automatic Syncing
 
